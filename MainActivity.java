@@ -22,14 +22,15 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
     }
 
-    public void findRoots(View v) {
+    public void findRoots(View view) {
         String inputA = ((EditText) findViewById(R.id.editText2)).getText().toString();
         String inputB = ((EditText) findViewById(R.id.editText3)).getText().toString();
         String inputC = ((EditText) findViewById(R.id.editText4)).getText().toString();
         String inputD = ((EditText) findViewById(R.id.editText5)).getText().toString();
         String inputY = ((EditText) findViewById(R.id.editText6)).getText().toString();
 
-        if (inputA.isEmpty() || inputB.isEmpty() || inputC.isEmpty() || inputD.isEmpty() || inputY.isEmpty()) {
+        if (inputA.isEmpty() || inputB.isEmpty() || inputC.isEmpty()
+                || inputD.isEmpty() || inputY.isEmpty()) {
             Toast toast = Toast.makeText(this, "Enter all numbers!", Toast.LENGTH_SHORT);
             toast.show();
             return;
@@ -45,24 +46,36 @@ public class MainActivity extends AppCompatActivity {
         int f;
         int[] deltas = new int[LEN];
 
-        long time = System.nanoTime();
-        while (true) {
-            for (int i = 0; i < LEN; i++) {
-                f = a * population[i][0] + b * population[i][1] + c * population[i][2] + d * population[i][3];
-                deltas[i] = Math.abs(y - f);
+        double[] timeOfGeneration = new double[100];
+        int[][] answers = new int[100][LEN];
+
+        for (int j = 0, currentMutationPercent = 0; j < timeOfGeneration.length; j++, currentMutationPercent++) {
+            long time = System.nanoTime();
+            while ((System.nanoTime() - time) / 1_000_000_000.0 < 3.0) {
+                for (int i = 0; i < LEN; i++) {
+                    f = a * population[i][0] + b * population[i][1] + c * population[i][2] + d * population[i][3];
+                    deltas[i] = Math.abs(y - f);
+                }
+
+                if (checkDeltas(deltas)) break;
+
+                population = newGeneration(population, getProbabilities(deltas), currentMutationPercent);
             }
-
-            if (checkDeltas(deltas)) break;
-
-            population = newGeneration(population, getProbabilities(deltas));
+            time = System.nanoTime() - time;
+            timeOfGeneration[j] = time / 1_000_000_000.0;
+            answers[j] = population[resultGenotype];
         }
-        time = System.nanoTime() - time;
+
+        int answer = getMinValueIndex(timeOfGeneration);
 
         TextView textView = findViewById(R.id.textView17);
-        textView.setText("Res: " + Arrays.toString(population[resultGenotype]));
+        textView.setText("Result: " + Arrays.toString(answers[answer]));
 
         TextView textView2 = findViewById(R.id.textView18);
-        textView2.setText("Time(sec): " + time / 1_000_000_000.0);
+        textView2.setText("Time(sec): " + timeOfGeneration[answer]);
+
+        TextView textView3 = findViewById(R.id.textView20);
+        textView3.setText("Mutation (%): " +  answer);
     }
 
     private int[][] getPopulation() {
@@ -103,7 +116,7 @@ public class MainActivity extends AppCompatActivity {
         return probabilities;
     }
 
-    private int[][] newGeneration(int[][] oldPopulation, double[] probabilities) {
+    private int[][] newGeneration(int[][] oldPopulation, double[] probabilities, int mutationPercent) {
         int[][] newGen = new int[LEN][LEN];
 
         for (int i = 0; i < LEN; i++) {
@@ -115,9 +128,10 @@ public class MainActivity extends AppCompatActivity {
             newGen[i][3] = oldPopulation[root2][3];
         }
 
-        // mutation
-        if (RANDOM.nextDouble() < 0.5) newGen[RANDOM.nextInt(LEN)][RANDOM.nextInt(LEN)]++;
-        else newGen[RANDOM.nextInt(LEN)][RANDOM.nextInt(LEN)]--;
+        if (RANDOM.nextDouble() < mutationPercent / 100.0) {
+            if (RANDOM.nextDouble() < 0.5) newGen[RANDOM.nextInt(LEN)][RANDOM.nextInt(LEN)]++;
+            else newGen[RANDOM.nextInt(LEN)][RANDOM.nextInt(LEN)]--;
+        }
 
         return newGen;
     }
@@ -128,5 +142,19 @@ public class MainActivity extends AppCompatActivity {
         if (rand < probabilities[1]) return 1;
         if (rand < probabilities[2]) return 2;
         return 3;
+    }
+
+    private int getMinValueIndex(double[] numbers) {
+        double minValue = numbers[0];
+        int minIndex = 0;
+
+        for(int i = 1; i < numbers.length; i++) {
+            if(numbers[i] < minValue) {
+                minValue = numbers[i];
+                minIndex = i;
+            }
+        }
+
+        return minIndex;
     }
 }
